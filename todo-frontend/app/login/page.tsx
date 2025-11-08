@@ -3,14 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 
-// ---
-// ** 1. ICON COMPONENTS (SVGs) **
-// ---
+//ICON COMPONENTS (SVGs)
+
 const LogoIcon = () => (
   <svg width="80" height="80" viewBox="0 0 92 92" fill="none" xmlns="http://www.w3.org/2000/svg">
-    {/* This is the purple box background */}
     <rect x="1" y="1" width="90" height="90" rx="9" fill="#7C3AED" stroke="none" strokeWidth="2" strokeLinejoin="bevel"/>
-    {/* This is the white checkmark */}
     <g clipPath="url(#clip0_214_39)">
     <path d="M83 40.9V75.6667C83 77.8768 82.122 79.9964 80.5592 81.5592C78.9964 83.122 76.8768 84 74.6667 84H16.3333C14.1232 84 12.0036 83.122 10.4408 81.5592C8.87797 79.9964 8 77.8768 8 75.6667V17.3333C8 15.1232 8.87797 13.0036 10.4408 11.4408C12.0036 9.87797 14.1232 9 16.3333 9H67.7667M33 42.3333L45.5 54.8333L87.1667 13.1667" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
     </g>
@@ -38,9 +35,6 @@ const FacebookIcon = () => (
   </svg>
 );
 
-// ---
-// ** 2. THE MAIN LOGIN PAGE COMPONENT **
-// ---
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -48,19 +42,16 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple validation check
     if (!username || !password) {
       alert("Please enter both username and password.");
       return;
     }
     console.log("Login submitted:", { username, password, remember });
-    // This is where you would call your backend API
-  };
+    };
 
   return (
     <div className="flex h-screen w-full bg-slate-50 font-sans">
       
-      {/* Left Panel (Logo) - Styled just like your register page */}
       <div className="hidden w-full flex-col items-center justify-center rounded-r-3xl bg-[#7C3AED] p-12 lg:flex lg:w-[35%]">
         <div className="flex flex-col items-center text-center space-y-6">
           <div className="flex items-center space-x-4">
@@ -73,14 +64,12 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Panel (Form) - Full width on mobile */}
       <div className="flex w-full items-center justify-center p-8 lg:w-[65%]">
         
-        {/* Form Container */}
+        {/* Form  */}
         <div className="w-full max-w-md">
           <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-lg">
             
-            {/* Header */}
             <div className="flex flex-col items-center text-center mb-8">
               <div className="rounded-lg bg-indigo-50 p-3">
                 <svg
@@ -106,7 +95,6 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Form */}
             <form className="space-y-6" onSubmit={handleSubmit}>
               
               {/* Username Field */}
