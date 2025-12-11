@@ -3,27 +3,72 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { authApi } from "@/lib/api";
+import { useAuthStore } from "@/lib/store";
+
+// Zod validation schema
+const registerSchema = z.object({
+	firstName: z.string().min(1, "First name is required"),
+	lastName: z.string().min(1, "Last name is required"),
+	email: z.string().email("Invalid email format"),
+	password: z.string().min(6, "Password must be at least 6 characters"),
+	confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.password === data.confirmPassword, {
+	message: "Passwords do not match",
+	path: ["confirmPassword"],
+});
+
+type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
-	const [firstName, setFirstName] = useState("");
-	const [lastName, setLastName] = useState("");
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
-	const [confirmPassword, setConfirmPassword] = useState("");
 	const [passwordVisible, setPasswordVisible] = useState(false);
 	const [confirmVisible, setConfirmVisible] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState("");
 	const router = useRouter();
+	const login = useAuthStore((state) => state.login);
 
-	const handleSubmit = (e: React.FormEvent) => {
-		e.preventDefault();
-		if (password !== confirmPassword) {
-			alert("Passwords do not match");
-			return;
+	const {
+		register,
+		handleSubmit,
+		formState: { errors },
+	} = useForm<RegisterFormData>({
+		resolver: zodResolver(registerSchema),
+	});
+
+	const onSubmit = async (data: RegisterFormData) => {
+		setError("");
+		setIsLoading(true);
+
+		try {
+			const response = await authApi.register({
+				firstName: data.firstName,
+				lastName: data.lastName,
+				email: data.email,
+				password: data.password,
+			});
+
+			// Auto-login after registration
+			login(
+				{
+					userId: response.userId,
+					email: response.email,
+					firstName: response.firstName,
+					lastName: response.lastName,
+				},
+				response.accessToken,
+				response.refreshToken
+			);
+
+			router.push('/AllTasks');
+		} catch (err: any) {
+			setError(err.response?.data?.error || "Registration failed. Please try again.");
+		} finally {
+			setIsLoading(false);
 		}
-		console.log("Register:", { firstName, lastName, email, password });
-		
-		// Navigate to login page after successful registration
-		router.push('/login');
 	};
 
 	return (
@@ -41,10 +86,10 @@ export default function RegisterPage() {
 						</div>
 						<h1 className="text-5xl font-bold">ToDo.</h1>
 					</div>
-					
+
 					{/* Divider */}
 					<div className="h-1 w-20 bg-white/40 mx-auto"></div>
-					
+
 					{/* Tagline */}
 					<p className="text-lg font-light">Stay organized, get things done</p>
 				</div>
@@ -59,19 +104,27 @@ export default function RegisterPage() {
 							Create an Account
 						</h2>
 
+						{/* Error Message */}
+						{error && (
+							<div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+								{error}
+							</div>
+						)}
+
 						{/* Form */}
-						<form className="space-y-5" onSubmit={handleSubmit}>
+						<form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
 							{/* First Name */}
 							<div>
 								<label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
 								<input
 									type="text"
-									value={firstName}
-									onChange={(e) => setFirstName(e.target.value)}
+									{...register("firstName")}
 									placeholder="Enter your first name"
 									className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-									required
 								/>
+								{errors.firstName && (
+									<p className="mt-1 text-sm text-red-600">{errors.firstName.message}</p>
+								)}
 							</div>
 
 							{/* Last Name */}
@@ -79,12 +132,13 @@ export default function RegisterPage() {
 								<label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
 								<input
 									type="text"
-									value={lastName}
-									onChange={(e) => setLastName(e.target.value)}
+									{...register("lastName")}
 									placeholder="Enter your last name"
 									className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-									required
 								/>
+								{errors.lastName && (
+									<p className="mt-1 text-sm text-red-600">{errors.lastName.message}</p>
+								)}
 							</div>
 
 							{/* Email */}
@@ -92,12 +146,13 @@ export default function RegisterPage() {
 								<label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
 								<input
 									type="email"
-									value={email}
-									onChange={(e) => setEmail(e.target.value)}
+									{...register("email")}
 									placeholder="Enter your email"
 									className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-									required
 								/>
+								{errors.email && (
+									<p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+								)}
 							</div>
 
 							{/* Password */}
@@ -106,11 +161,9 @@ export default function RegisterPage() {
 								<div className="relative">
 									<input
 										type={passwordVisible ? "text" : "password"}
-										value={password}
-										onChange={(e) => setPassword(e.target.value)}
+										{...register("password")}
 										placeholder="Enter your password"
 										className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition pr-10"
-										required
 									/>
 									<button
 										type="button"
@@ -118,18 +171,12 @@ export default function RegisterPage() {
 										className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
 										aria-label="Toggle password visibility"
 									>
-										<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-											{passwordVisible ? (
-												<path d="M3 3l18 18M9.88 9.88a3 3 0 1 0 4.24 4.24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-											) : (
-												<>
-													<path d="M12 5C7 5 2.73 8.11 1 12.46c1.73 4.35 6 7.54 11 7.54s9.27-3.19 11-7.54C21.27 8.11 17 5 12 5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-													<circle cx="12" cy="12.46" r="2.5" stroke="currentColor" strokeWidth="1.5" />
-												</>
-											)}
-										</svg>
+										👁
 									</button>
 								</div>
+								{errors.password && (
+									<p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+								)}
 							</div>
 
 							{/* Confirm Password */}
@@ -138,11 +185,9 @@ export default function RegisterPage() {
 								<div className="relative">
 									<input
 										type={confirmVisible ? "text" : "password"}
-										value={confirmPassword}
-										onChange={(e) => setConfirmPassword(e.target.value)}
+										{...register("confirmPassword")}
 										placeholder="Confirm your password"
 										className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition pr-10"
-										required
 									/>
 									<button
 										type="button"
@@ -150,26 +195,21 @@ export default function RegisterPage() {
 										className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
 										aria-label="Toggle confirm password visibility"
 									>
-										<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-											{confirmVisible ? (
-												<path d="M3 3l18 18M9.88 9.88a3 3 0 1 0 4.24 4.24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-											) : (
-												<>
-													<path d="M12 5C7 5 2.73 8.11 1 12.46c1.73 4.35 6 7.54 11 7.54s9.27-3.19 11-7.54C21.27 8.11 17 5 12 5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-													<circle cx="12" cy="12.46" r="2.5" stroke="currentColor" strokeWidth="1.5" />
-												</>
-											)}
-										</svg>
+										👁
 									</button>
 								</div>
+								{errors.confirmPassword && (
+									<p className="mt-1 text-sm text-red-600">{errors.confirmPassword.message}</p>
+								)}
 							</div>
 
 							{/* Create Account Button */}
 							<button
 								type="submit"
-								className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-3 rounded-full text-lg transition duration-200 mt-8"
+								disabled={isLoading}
+								className="w-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-3 rounded-full text-lg transition duration-200 mt-8 disabled:opacity-50"
 							>
-								Create Account
+								{isLoading ? "Creating Account..." : "Create Account"}
 							</button>
 						</form>
 
